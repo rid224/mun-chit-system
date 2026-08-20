@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Not available{% endblock %}
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center text-center" style="min-height: 60vh;">
+    <h1 class="mcs-display h2 mb-2">This isn't available to your account</h1>
+    <p class="text-muted mb-4" style="max-width: 480px;">
+        Either this page needs a role or committee assignment you don't currently
+        have, or your assignment has changed. If this looks wrong, contact your
+        conference administrator.
+    </p>
+    <a href="{% url 'accounts:landing' %}" class="btn btn-mcs-primary mcs-focus">Back to start</a>
+</div>
+{% endblock %}

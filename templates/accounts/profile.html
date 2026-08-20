@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-12 col-md-6 col-lg-4">
+        <h1 class="mcs-display h3 mb-4">Your profile</h1>
+        <div class="mcs-card p-4">
+            <dl class="mb-4">
+                <dt class="text-muted small text-uppercase">Email</dt>
+                <dd>{{ user.email }}</dd>
+                <dt class="text-muted small text-uppercase">Role</dt>
+                <dd>{{ user.get_role_display }}</dd>
+            </dl>
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="{{ form.name.id_for_label }}" class="form-label">Display name</label>
+                    {{ form.name }}
+                </div>
+                <button type="submit" class="btn btn-mcs-primary mcs-focus">Save changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

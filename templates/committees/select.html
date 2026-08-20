@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Choose a committee{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <h1 class="mcs-display h3 mb-2">Choose a committee</h1>
+        <p class="text-muted mb-4">You're assigned to more than one committee. Pick the one you'd like to work in — you can switch later from your dashboard.</p>
+
+        <div class="d-flex flex-column gap-3">
+            {% for committee in committees %}
+            <form method="post" class="mcs-card p-3 d-flex justify-content-between align-items-center">
+                {% csrf_token %}
+                <input type="hidden" name="committee_id" value="{{ committee.id }}">
+                <div>
+                    <div class="fw-semibold">{{ committee.name }}</div>
+                    <div class="text-muted small">{{ committee.conference.name }} · {{ committee.room.name|default:"No room assigned" }}</div>
+                </div>
+                <button type="submit" class="btn btn-mcs-primary mcs-focus" aria-label="Select {{ committee.name }}">Select</button>
+            </form>
+            {% empty %}
+            <div class="text-muted">No committee assignments found.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

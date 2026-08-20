@@ -1,0 +1,15 @@
+{% load static %}
+<nav class="col-12 col-lg-2 mcs-sidebar d-lg-block collapse" id="mcsSidebar" aria-label="Section navigation">
+    <div class="p-3 d-flex flex-column gap-1">
+        {% if active_committee %}
+        <div class="mb-2 pb-2 border-bottom">
+            <div class="text-muted small text-uppercase" style="letter-spacing:0.05em;">Active committee</div>
+            <div class="fw-semibold">{{ active_committee.name }}</div>
+            <div class="text-muted small">{{ active_committee.room.name|default:"No room assigned" }}</div>
+        </div>
+        {% endif %}
+        {% for item in sidebar_items %}
+            <a class="nav-link {% if item.active %}active{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
+        {% endfor %}
+    </div>
+</nav>

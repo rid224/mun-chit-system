@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Chits{% endblock %}
+{% block sidebar %}{% include "adminpanel/_sidebar.html" with active="chits" %}{% endblock %}
+{% block main_col_class %}col-12 col-lg-10{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mcs-display h3 mb-0">Chits</h1>
+    <a href="{% url 'adminpanel:chit_export' %}?{{ request.GET.urlencode }}" class="btn btn-mcs-gold mcs-focus">Export CSV</a>
+</div>
+
+<form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-6 col-md-2">
+        <label class="form-label small text-muted">Search</label>
+        <input type="text" name="q" value="{{ current_filters.q }}" class="form-control" placeholder="Subject or chit #">
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label small text-muted">Conference</label>
+        <select name="conference" class="form-select">
+            <option value="">All</option>
+            {% for c in conferences %}
+            <option value="{{ c.id }}" {% if current_filters.conference == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label small text-muted">Committee</label>
+        <select name="committee" class="form-select">
+            <option value="">All</option>
+            {% for c in committees %}
+            <option value="{{ c.id }}" {% if current_filters.committee == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label small text-muted">Status</label>
+        <select name="status" class="form-select">
+            <option value="">All</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label small text-muted">Category</label>
+        <select name="category" class="form-select">
+            <option value="">All</option>
+            {% for value, label in category_choices %}
+            <option value="{{ value }}" {% if current_filters.category == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <button type="submit" class="btn btn-mcs-primary w-100 mcs-focus">Filter</button>
+    </div>
+</form>
+
+{% if chits %}
+<div class="table-responsive mcs-card">
+    <table class="table mb-0 align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Chit #</th><th scope="col">Conference</th><th scope="col">Committee</th><th scope="col">From</th><th scope="col">To</th>
+                <th scope="col">Status</th><th scope="col">Priority</th><th scope="col">Sent</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for chit in chits %}
+            <tr>
+                <td><a href="{% url 'chits:detail' chit.public_id %}">{{ chit.chit_number }}</a></td>
+                <td>{{ chit.conference.name }}</td>
+                <td>{{ chit.committee.name }}</td>
+                <td>{% if chit.is_anonymous %}Anonymous{% else %}{{ chit.sender_country.country_name|default:chit.sender.name }}{% endif %}</td>
+                <td>{% if chit.recipient_type == "executive_board" %}Executive Board{% else %}{{ chit.recipient_country.country_name|default:"—" }}{% endif %}</td>
+                <td>{% include "chits/_status_badge.html" %}</td>
+                <td>{% if chit.priority == "urgent" %}<span class="text-danger fw-semibold">Urgent</span>{% else %}Normal{% endif %}</td>
+                <td class="text-muted small">{{ chit.created_at|date:"M j, g:i A" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "chits/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted py-5 mcs-card">
+    <p class="mb-0">No chits match these filters.</p>
+</div>
+{% endif %}
+{% endblock %}

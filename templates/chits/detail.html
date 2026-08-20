@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ chit.chit_number }}{% endblock %}
+{% block main_col_class %}col-12{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-7">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+            <h1 class="mcs-display h4 mb-0">{{ chit.chit_number }}</h1>
+            {% include "chits/_status_badge.html" %}
+        </div>
+        <p class="text-muted mb-4">{{ chit.committee.name }} · {{ chit.created_at|date:"M j, Y, g:i A" }}</p>
+
+        <div class="mcs-card p-4 mb-4">
+            <dl class="row mb-0">
+                <dt class="col-3 text-muted small text-uppercase">From</dt>
+                <dd class="col-9">
+                    {% if chit.is_anonymous and chit.sender != request.user %}
+                        Anonymous
+                    {% else %}
+                        {{ chit.sender_country.country_name|default:chit.sender.name }}
+                    {% endif %}
+                </dd>
+
+                <dt class="col-3 text-muted small text-uppercase">To</dt>
+                <dd class="col-9">
+                    {% if chit.recipient_type == "executive_board" %}
+                        Executive Board — {{ chit.committee.name }}
+                    {% else %}
+                        {{ chit.recipient_country.country_name|default:"—" }}
+                    {% endif %}
+                </dd>
+
+                {% if chit.subject %}
+                <dt class="col-3 text-muted small text-uppercase">Subject</dt>
+                <dd class="col-9">{{ chit.subject }}</dd>
+                {% endif %}
+
+                <dt class="col-3 text-muted small text-uppercase">Category</dt>
+                <dd class="col-9">{{ chit.get_category_display }}</dd>
+
+                <dt class="col-3 text-muted small text-uppercase">Priority</dt>
+                <dd class="col-9">{% if chit.priority == "urgent" %}<span class="text-danger fw-semibold">Urgent</span>{% else %}Normal{% endif %}</dd>
+
+                <dt class="col-3 text-muted small text-uppercase">Message</dt>
+                <dd class="col-9" style="white-space: pre-wrap;">{{ chit.message }}</dd>
+            </dl>
+        </div>
+
+        {% if chit.replies.all %}
+        <h2 class="mcs-display h5 mb-3">Replies</h2>
+        {% for reply in chit.replies.all %}
+        <div class="mcs-card p-3 mb-2">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="fw-semibold">{{ reply.author.name }}</span>
+                <span class="text-muted small">{{ reply.created_at|date:"M j, g:i A" }}</span>
+            </div>
+            <div style="white-space: pre-wrap;">{{ reply.message }}</div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if is_eb_actor %}
+            {% if chit.status != "archived" %}
+            <div class="mcs-card p-4 mt-4">
+                <h2 class="mcs-display h6 mb-3">Reply as {{ chit.committee.name }} Executive Board</h2>
+                {% if chit.conference.replies_enabled %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reply">
+                    {{ reply_form.message }}
+                    {% for error in reply_form.message.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    <button type="submit" class="btn btn-mcs-primary mt-3 mcs-focus">Send reply</button>
+                </form>
+                {% else %}
+                <p class="text-muted mb-0">Replies are currently disabled by the conference administrator.</p>
+                {% endif %}
+            </div>
+
+            <form method="post" class="mt-3">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="archive">
+                <button type="submit" class="btn btn-outline-secondary mcs-focus">Archive this chit</button>
+            </form>
+            {% else %}
+            <div class="alert alert-secondary mt-4" role="status">This chit has been archived.</div>
+            {% endif %}
+        {% endif %}
+
+        <a href="{% if chit.sender == request.user %}{% url 'chits:sent' %}{% elif is_eb_actor %}{% url 'chits:eb_incoming' %}{% else %}{% url 'chits:received' %}{% endif %}" class="btn btn-outline-secondary mt-3 mcs-focus">← Back</a>
+    </div>
+</div>
+{% endblock %}

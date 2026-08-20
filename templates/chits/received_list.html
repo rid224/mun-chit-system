@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Received chits{% endblock %}
+{% block sidebar %}
+    <nav class="col-12 col-lg-2 mcs-sidebar d-lg-block collapse" id="mcsSidebar" aria-label="Section navigation">
+        <div class="p-3 d-flex flex-column gap-1">
+            <div class="mb-2 pb-2 border-bottom">
+                <div class="text-muted small text-uppercase" style="letter-spacing:0.05em;">Active committee</div>
+                <div class="fw-semibold">{{ committee.name }}</div>
+            </div>
+            <a class="nav-link" href="{% url 'chits:delegate_dashboard' %}">Dashboard</a>
+            <a class="nav-link" href="{% url 'chits:send' %}">Send chit</a>
+            <a class="nav-link" href="{% url 'chits:sent' %}">Sent chits</a>
+            <a class="nav-link active" href="{% url 'chits:received' %}">Received chits</a>
+            <a class="nav-link" href="{% url 'accounts:profile' %}">Profile</a>
+        </div>
+    </nav>
+{% endblock %}
+{% block main_col_class %}col-12 col-lg-10{% endblock %}
+{% block content %}
+<h1 class="mcs-display h3 mb-4">Received chits</h1>
+{% include "chits/_filter_bar.html" %}
+
+{% if chits %}
+<div class="table-responsive mcs-card">
+    <table class="table mb-0 align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Chit #</th>
+                <th scope="col">From</th>
+                <th scope="col">Subject</th>
+                <th scope="col">Category</th>
+                <th scope="col">Priority</th>
+                <th scope="col">Status</th>
+                <th scope="col">Received</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for chit in chits %}
+            <tr>
+                <td><a href="{% url 'chits:detail' chit.public_id %}">{{ chit.chit_number }}</a></td>
+                <td>{% if chit.is_anonymous %}Anonymous{% else %}{{ chit.sender_country.country_name|default:"—" }}{% endif %}</td>
+                <td>{{ chit.subject|default:"—"|truncatechars:40 }}</td>
+                <td>{{ chit.get_category_display }}</td>
+                <td>{% if chit.priority == "urgent" %}<span class="text-danger fw-semibold">Urgent</span>{% else %}Normal{% endif %}</td>
+                <td>{% include "chits/_status_badge.html" %}</td>
+                <td class="text-muted small">{{ chit.created_at|date:"M j, g:i A" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "chits/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted py-5 mcs-card">
+    <p class="mb-0">No chits received yet in {{ committee.name }}.</p>
+</div>
+{% endif %}
+{% endblock %}

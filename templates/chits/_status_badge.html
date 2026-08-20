@@ -1,0 +1,11 @@
+{% load static %}
+<span class="badge mcs-badge-status
+    {% if chit.status == 'submitted' %}text-bg-secondary
+    {% elif chit.status == 'delivered' %}text-bg-info
+    {% elif chit.status == 'read' %}text-bg-primary
+    {% elif chit.status == 'replied' %}text-bg-success
+    {% elif chit.status == 'archived' %}text-bg-dark
+    {% elif chit.status == 'rejected' or chit.status == 'withdrawn' %}text-bg-danger
+    {% else %}text-bg-secondary{% endif %}">
+    {{ chit.get_status_display }}
+</span>

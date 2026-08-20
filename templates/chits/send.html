@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Send a chit{% endblock %}
+{% block sidebar %}
+    <nav class="col-12 col-lg-2 mcs-sidebar d-lg-block collapse" id="mcsSidebar" aria-label="Section navigation">
+        <div class="p-3 d-flex flex-column gap-1">
+            <div class="mb-2 pb-2 border-bottom">
+                <div class="text-muted small text-uppercase" style="letter-spacing:0.05em;">Active committee</div>
+                <div class="fw-semibold">{{ committee.name }}</div>
+                <div class="text-muted small">{{ committee.room.name|default:"No room assigned" }}</div>
+            </div>
+            <a class="nav-link" href="{% url 'chits:delegate_dashboard' %}">Dashboard</a>
+            <a class="nav-link active" href="{% url 'chits:send' %}">Send chit</a>
+            <a class="nav-link" href="{% url 'chits:sent' %}">Sent chits</a>
+            <a class="nav-link" href="{% url 'chits:received' %}">Received chits</a>
+            <a class="nav-link" href="{% url 'accounts:profile' %}">Profile</a>
+        </div>
+    </nav>
+{% endblock %}
+{% block main_col_class %}col-12 col-lg-10{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <h1 class="mcs-display h3 mb-1">Send a chit</h1>
+        <p class="text-muted mb-4">{{ committee.name }} · {{ committee.room.name|default:"No room assigned" }}</p>
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger" role="alert">
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" novalidate class="mcs-card p-4">
+            {% csrf_token %}
+
+            <fieldset class="mb-3">
+                <legend class="h6">Send to</legend>
+                {% for radio in form.recipient_type %}
+                    <div class="form-check">
+                        {{ radio.tag }}
+                        <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                    </div>
+                {% endfor %}
+                {% for error in form.recipient_type.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </fieldset>
+
+            <div class="mb-3" id="recipient-country-field">
+                <label for="{{ form.recipient_country.id_for_label }}" class="form-label">Country</label>
+                {{ form.recipient_country }}
+                {% for error in form.recipient_country.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.subject.id_for_label }}" class="form-label">Subject <span class="text-muted small">(optional)</span></label>
+                {{ form.subject }}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.message.id_for_label }}" class="form-label">Message</label>
+                {{ form.message }}
+                <div class="d-flex justify-content-between mt-1">
+                    <div>{% for error in form.message.errors %}<span class="text-danger small">{{ error }}</span>{% endfor %}</div>
+                    <div class="small text-muted" id="char-count-help"><span id="char-count">0</span> / {{ max_length }} characters</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
+                    {{ form.category }}
+                </div>
+                <div class="col-6 mb-3">
+                    <label for="{{ form.priority.id_for_label }}" class="form-label">Priority</label>
+                    {{ form.priority }}
+                </div>
+            </div>
+
+            {% if form.is_anonymous %}
+            <div class="form-check mb-3">
+                {{ form.is_anonymous }}
+                <label class="form-check-label" for="{{ form.is_anonymous.id_for_label }}">Send anonymously</label>
+            </div>
+            {% endif %}
+
+            <div class="form-check mb-4">
+                {{ form.agree_to_rules }}
+                <label class="form-check-label" for="{{ form.agree_to_rules.id_for_label }}">{{ form.agree_to_rules.label }}</label>
+                {% for error in form.agree_to_rules.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            </div>
+
+            <button type="submit" class="btn btn-mcs-primary px-4 mcs-focus">Preview chit</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    const messageField = document.getElementById('id_message');
+    const counter = document.getElementById('char-count');
+    function updateCount() {
+        if (messageField && counter) {
+            counter.textContent = messageField.value.length;
+        }
+    }
+    if (messageField) {
+        messageField.addEventListener('input', updateCount);
+        updateCount();
+    }
+
+    // Only show the country dropdown when "delegate" recipient type is selected.
+    const countryField = document.getElementById('recipient-country-field');
+    const radios = document.querySelectorAll('input[name="recipient_type"]');
+    function updateRecipientVisibility() {
+        const selected = document.querySelector('input[name="recipient_type"]:checked');
+        if (!countryField) return;
+        countryField.style.display = (selected && selected.value === 'delegate') ? '' : 'none';
+    }
+    radios.forEach(function (r) { r.addEventListener('change', updateRecipientVisibility); });
+    updateRecipientVisibility();
+})();
+</script>
+{% endblock %}
