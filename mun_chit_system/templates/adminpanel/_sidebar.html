@@ -1,0 +1,13 @@
+{% load static %}
+<nav class="col-12 col-lg-2 mcs-sidebar d-lg-block collapse" id="mcsSidebar" aria-label="Section navigation">
+    <div class="p-3 d-flex flex-column gap-1">
+        <a class="nav-link {% if active == 'dashboard' %}active{% endif %}" href="{% url 'adminpanel:dashboard' %}">Dashboard</a>
+        <a class="nav-link {% if active == 'conferences' %}active{% endif %}" href="{% url 'adminpanel:conference_list' %}">Conferences</a>
+        <a class="nav-link {% if active == 'chits' %}active{% endif %}" href="{% url 'adminpanel:chit_list' %}">Chits</a>
+        {% if user.is_superuser %}
+        <a class="nav-link {% if active == 'audit' %}active{% endif %}" href="{% url 'adminpanel:audit_log' %}">Audit log</a>
+        {% endif %}
+        <a href="{% url 'admin:index' %}" class="nav-link" target="_blank" rel="noopener">Django Admin ↗</a>
+        <a class="nav-link" href="{% url 'accounts:profile' %}">Profile</a>
+    </div>
+</nav>

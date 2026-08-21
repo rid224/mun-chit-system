@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Conferences{% endblock %}
+{% block sidebar %}{% include "adminpanel/_sidebar.html" with active="conferences" %}{% endblock %}
+{% block main_col_class %}col-12 col-lg-10{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mcs-display h3 mb-0">Conferences</h1>
+    {% if user.is_superuser %}
+    <a href="{% url 'adminpanel:conference_create' %}" class="btn btn-mcs-primary mcs-focus">+ New conference</a>
+    {% endif %}
+</div>
+
+{% if conferences %}
+<div class="table-responsive mcs-card">
+    <table class="table mb-0 align-middle">
+        <thead>
+            <tr><th scope="col">Name</th><th scope="col">Year</th><th scope="col">Venue</th><th scope="col">Dates</th><th scope="col">Status</th></tr>
+        </thead>
+        <tbody>
+            {% for c in conferences %}
+            <tr>
+                <td><a href="{% url 'adminpanel:conference_detail' c.pk %}">{{ c.name }}</a></td>
+                <td>{{ c.year }}</td>
+                <td>{{ c.venue|default:"—" }}</td>
+                <td>{{ c.start_date }} – {{ c.end_date }}</td>
+                <td>{% if c.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center text-muted py-5 mcs-card">
+    <p class="mb-0">No conferences assigned to you yet.</p>
+</div>
+{% endif %}
+{% endblock %}

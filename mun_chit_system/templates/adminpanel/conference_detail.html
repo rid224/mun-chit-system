@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ conference.name }}{% endblock %}
+{% block sidebar %}{% include "adminpanel/_sidebar.html" with active="conferences" %}{% endblock %}
+{% block main_col_class %}col-12 col-lg-10{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-1">
+    <h1 class="mcs-display h3 mb-0">{{ conference.name }} ({{ conference.year }})</h1>
+    {% if conference.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}
+</div>
+<p class="text-muted mb-3">{{ conference.venue|default:"No venue set" }} · {{ conference.start_date }} – {{ conference.end_date }}</p>
+
+<div class="d-flex gap-2 mb-4">
+    <a href="{% url 'adminpanel:conference_edit' conference.pk %}" class="btn btn-outline-secondary btn-sm mcs-focus">Edit details</a>
+    <a href="{% url 'adminpanel:conference_settings' conference.pk %}" class="btn btn-outline-secondary btn-sm mcs-focus">Chit settings</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-6">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="mcs-display h5 mb-0">Rooms</h2>
+            <a href="{% url 'adminpanel:room_create' conference.pk %}" class="btn btn-mcs-primary btn-sm mcs-focus">+ Room</a>
+        </div>
+        <div class="mcs-card">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Location</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for room in rooms %}
+                    <tr>
+                        <td>{{ room.name }}</td>
+                        <td class="text-muted small">{{ room.location|default:"—" }}</td>
+                        <td>{% if room.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+                        <td class="text-end">
+                            <a href="{% url 'adminpanel:room_edit' room.pk %}" class="btn btn-sm btn-outline-secondary mcs-focus">Edit</a>
+                            <form method="post" action="{% url 'adminpanel:room_toggle_active' room.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-secondary mcs-focus">{% if room.is_active %}Deactivate{% else %}Reactivate{% endif %}</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td class="text-muted py-3" colspan="4">No rooms yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="mcs-display h5 mb-0">Committees</h2>
+            <a href="{% url 'adminpanel:committee_create' conference.pk %}" class="btn btn-mcs-primary btn-sm mcs-focus">+ Committee</a>
+        </div>
+        <div class="mcs-card">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Room</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for committee in committees %}
+                    <tr>
+                        <td><a href="{% url 'adminpanel:committee_detail' committee.pk %}">{{ committee.name }}</a></td>
+                        <td class="text-muted small">{{ committee.room.name|default:"No room" }}</td>
+                        <td>{% if committee.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+                        <td class="text-end">
+                            <a href="{% url 'adminpanel:committee_edit' committee.pk %}" class="btn btn-sm btn-outline-secondary mcs-focus">Edit</a>
+                            <form method="post" action="{% url 'adminpanel:committee_toggle_active' committee.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-secondary mcs-focus">{% if committee.is_active %}Deactivate{% else %}Reactivate{% endif %}</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td class="text-muted py-3" colspan="4">No committees yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

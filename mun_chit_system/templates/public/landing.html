@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}MUN Chit System{% endblock %}
+{% block content %}
+<div class="mcs-auth-shell d-flex align-items-center justify-content-center" style="margin: -1.5rem -0.75rem;">
+    <div class="text-center text-white px-3 py-5" style="max-width: 640px;">
+        <div class="mb-3" style="letter-spacing: 0.15em; font-size: 0.8rem; color: var(--mcs-gold-soft);">MODEL UNITED NATIONS</div>
+        <h1 class="mcs-display display-5 mb-3">Chits, delivered with order.</h1>
+        <p class="lead mb-4" style="color: rgba(255,255,255,0.85);">
+            One system for every conference, committee, and room — so delegates,
+            the Executive Board, and administrators always know exactly where a
+            note came from and where it's going.
+        </p>
+        <a href="{% url 'accounts:login' %}" class="btn btn-mcs-gold btn-lg px-4 mcs-focus">Sign in</a>
+    </div>
+</div>
+{% endblock %}

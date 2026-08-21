@@ -1,0 +1,12 @@
+Django==6.1
+psycopg2-binary==2.9.12
+django-environ==0.14.0
+dj-database-url==3.1.2
+djangorestframework==3.18.0
+gunicorn==23.0.0
+whitenoise==6.8.2
+
+# Optional, for Phase 6+ real-time upgrade (not required for v1 polling notifications):
+# channels==4.*
+# channels-redis==4.*
+# daphne==4.*

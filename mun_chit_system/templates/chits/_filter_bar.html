@@ -1,0 +1,27 @@
+<form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-12 col-md-3">
+        <label class="form-label small text-muted">Search</label>
+        <input type="text" name="q" value="{{ current_filters.q }}" class="form-control" placeholder="Subject or chit number">
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small text-muted">Status</label>
+        <select name="status" class="form-select">
+            <option value="">All</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small text-muted">Category</label>
+        <select name="category" class="form-select">
+            <option value="">All</option>
+            {% for value, label in category_choices %}
+            <option value="{{ value }}" {% if current_filters.category == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-1">
+        <button type="submit" class="btn btn-mcs-primary w-100 mcs-focus">Filter</button>
+    </div>
+</form>

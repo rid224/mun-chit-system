@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block sidebar %}{% include "adminpanel/_sidebar.html" with active="audit" %}{% endblock %}
+{% block main_col_class %}col-12 col-lg-10{% endblock %}
+{% block content %}
+<h1 class="mcs-display h3 mb-4">Audit log</h1>
+<p class="text-muted mb-4">
+    Append-only record of security-relevant actions. Never includes chit
+    message content — only structured metadata (ids, status changes,
+    field names).
+</p>
+
+<form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-6 col-md-3">
+        <label class="form-label small text-muted">Action</label>
+        <select name="action" class="form-select">
+            <option value="">All</option>
+            {% for a in action_choices %}
+            <option value="{{ a }}" {% if current_filters.action == a %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label small text-muted">Object type</label>
+        <select name="object_type" class="form-select">
+            <option value="">All</option>
+            {% for t in object_type_choices %}
+            <option value="{{ t }}" {% if current_filters.object_type == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <button type="submit" class="btn btn-mcs-primary w-100 mcs-focus">Filter</button>
+    </div>
+</form>
+
+{% if logs %}
+<div class="table-responsive mcs-card">
+    <table class="table mb-0 align-middle">
+        <thead><tr><th scope="col">When</th><th scope="col">Actor</th><th scope="col">Action</th><th scope="col">Object</th><th scope="col">Metadata</th></tr></thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td class="text-muted small">{{ log.created_at|date:"M j, Y g:i A" }}</td>
+                <td>{{ log.actor.name|default:"System" }}</td>
+                <td>{{ log.action }}</td>
+                <td>{{ log.object_type }} <span class="text-muted small">{{ log.object_id|truncatechars:8 }}</span></td>
+                <td class="text-muted small">{{ log.metadata }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "chits/_pagination.html" %}
+{% else %}
+<div class="text-center text-muted py-5 mcs-card">
+    <p class="mb-0">No audit log entries match these filters.</p>
+</div>
+{% endif %}
+{% endblock %}

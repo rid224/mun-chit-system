@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Administrator dashboard{% endblock %}
+{% block sidebar %}
+    {% include "adminpanel/_sidebar.html" with active="dashboard" %}
+{% endblock %}
+{% block main_col_class %}col-12 col-lg-10{% endblock %}
+{% block content %}
+<h1 class="mcs-display h3 mb-1">Welcome, {{ user.name }}</h1>
+<p class="text-muted mb-4">
+    {% if user.is_superuser %}Super Administrator — full access.{% else %}Committee Administrator{% endif %}
+</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="mcs-card p-4">
+            <div class="text-muted small text-uppercase mb-1">Conferences</div>
+            <div class="mcs-display h2 mb-0">{{ conference_count }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="mcs-card p-4">
+            <div class="text-muted small text-uppercase mb-1">Committees</div>
+            <div class="mcs-display h2 mb-0">{{ committee_count }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="mcs-card p-4">
+            <div class="text-muted small text-uppercase mb-1">Active delegates</div>
+            <div class="mcs-display h2 mb-0">{{ delegate_count }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="mcs-card p-4">
+            <div class="text-muted small text-uppercase mb-1">Total chits</div>
+            <div class="mcs-display h2 mb-0">{{ total_chits }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-6">
+        <div class="mcs-card p-4 h-100">
+            <div class="text-muted small text-uppercase mb-3">Chits by status</div>
+            {% for row in status_breakdown %}
+            <div class="d-flex justify-content-between border-bottom py-2">
+                <span>{{ row.status|title }}</span>
+                <span class="fw-semibold">{{ row.count }}</span>
+            </div>
+            {% empty %}
+            <p class="text-muted mb-0">No chits yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="mcs-card p-4 h-100">
+            <div class="text-muted small text-uppercase mb-3">Chits by category</div>
+            {% for row in category_breakdown %}
+            <div class="d-flex justify-content-between border-bottom py-2">
+                <span>{{ row.category|title }}</span>
+                <span class="fw-semibold">{{ row.count }}</span>
+            </div>
+            {% empty %}
+            <p class="text-muted mb-0">No chits yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% if managed_conferences %}
+<div class="mcs-card p-4">
+    <div class="text-muted small text-uppercase mb-2">Managed conferences</div>
+    <ul class="list-unstyled mb-0">
+        {% for c in managed_conferences %}
+        <li class="py-1 border-bottom"><a href="{% url 'adminpanel:conference_detail' c.pk %}">{{ c.name }} ({{ c.year }})</a></li>
+        {% empty %}
+        <li class="text-muted">No conferences assigned yet.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endblock %}
