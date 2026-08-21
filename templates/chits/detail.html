@@ -27,6 +27,9 @@
                         Executive Board — {{ chit.committee.name }}
                     {% else %}
                         {{ chit.recipient_country.country_name|default:"—" }}
+                        {% if chit.is_via_eb %}
+                            <span class="badge mcs-badge-status text-bg-info ms-1">Via EB</span>
+                        {% endif %}
                     {% endif %}
                 </dd>
 
@@ -38,8 +41,10 @@
                 <dt class="col-3 text-muted small text-uppercase">Category</dt>
                 <dd class="col-9">{{ chit.get_category_display }}</dd>
 
-                <dt class="col-3 text-muted small text-uppercase">Priority</dt>
-                <dd class="col-9">{% if chit.priority == "urgent" %}<span class="text-danger fw-semibold">Urgent</span>{% else %}Normal{% endif %}</dd>
+                {% if chit.is_via_eb %}
+                <dt class="col-3 text-muted small text-uppercase">Also visible to</dt>
+                <dd class="col-9">The Executive Board of {{ chit.committee.name }} (Via EB)</dd>
+                {% endif %}
 
                 <dt class="col-3 text-muted small text-uppercase">Message</dt>
                 <dd class="col-9" style="white-space: pre-wrap;">{{ chit.message }}</dd>

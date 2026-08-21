@@ -11,6 +11,7 @@ class Committee(models.Model):
         ECOSOC = "ecosoc", "ECOSOC"
         CRISIS = "crisis", "Crisis Committee"
         SPECIALIZED_AGENCY = "specialized_agency", "Specialized Agency"
+        INDIAN_PARLIAMENT = "indian_parliament", "Indian Parliament"
         OTHER = "other", "Other"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

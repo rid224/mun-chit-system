@@ -13,6 +13,9 @@
                 <dd class="col-8">
                     {% if draft.recipient_type == "delegate" %}
                         {{ recipient_country.country_name }}
+                        {% if draft.is_via_eb %}
+                            <span class="badge mcs-badge-status text-bg-info ms-1">Via EB</span>
+                        {% endif %}
                     {% else %}
                         Executive Board — {{ committee.name }}
                     {% endif %}
@@ -24,14 +27,10 @@
                 <dt class="col-4 text-muted small text-uppercase">Category</dt>
                 <dd class="col-8">{{ category_display }}</dd>
 
-                <dt class="col-4 text-muted small text-uppercase">Priority</dt>
-                <dd class="col-8">
-                    {% if draft.priority == "urgent" %}
-                        <span class="badge mcs-badge-status" style="background:#B23A2F;">Urgent</span>
-                    {% else %}
-                        <span class="badge mcs-badge-status text-bg-secondary">Normal</span>
-                    {% endif %}
-                </dd>
+                {% if draft.is_via_eb %}
+                <dt class="col-4 text-muted small text-uppercase">Also visible to</dt>
+                <dd class="col-8">The Executive Board of {{ committee.name }} (Via EB)</dd>
+                {% endif %}
 
                 {% if draft.is_anonymous %}
                 <dt class="col-4 text-muted small text-uppercase">Sender</dt>

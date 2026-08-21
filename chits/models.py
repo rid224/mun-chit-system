@@ -23,11 +23,6 @@ class Category(models.TextChoices):
     OTHER = "other", "Other"
 
 
-class Priority(models.TextChoices):
-    NORMAL = "normal", "Normal"
-    URGENT = "urgent", "Urgent"
-
-
 class Status(models.TextChoices):
     DRAFT = "draft", "Draft"
     SUBMITTED = "submitted", "Submitted"
@@ -89,11 +84,18 @@ class Chit(models.Model):
         related_name="received_country_chits",
     )
     recipient_type = models.CharField(max_length=20, choices=RecipientType.choices)
+    is_via_eb = models.BooleanField(
+        default=False,
+        help_text=(
+            "Delegate-to-delegate chit CC'd to the committee's Executive Board. "
+            "Meaningless (and always False) for chits already addressed directly "
+            "to the Executive Board."
+        ),
+    )
 
     subject = models.CharField(max_length=200, blank=True)
     message = models.TextField(max_length=MAX_MESSAGE_LENGTH)
     category = models.CharField(max_length=32, choices=Category.choices, default=Category.OTHER)
-    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.NORMAL)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
     is_anonymous = models.BooleanField(default=False)
 
@@ -114,7 +116,6 @@ class Chit(models.Model):
             models.Index(fields=["sender"]),
             models.Index(fields=["recipient"]),
             models.Index(fields=["status"]),
-            models.Index(fields=["priority"]),
             models.Index(fields=["created_at"]),
         ]
 
@@ -133,6 +134,12 @@ class Chit(models.Model):
         if len(self.message or "") > MAX_MESSAGE_LENGTH:
             raise ValidationError(
                 f"Message exceeds the maximum length of {MAX_MESSAGE_LENGTH} characters."
+            )
+
+        if self.is_via_eb and self.recipient_type != RecipientType.DELEGATE:
+            raise ValidationError(
+                "'Via EB' only applies to delegate-to-delegate chits — a chit "
+                "already addressed to the Executive Board is already visible to them."
             )
 
     def _generate_chit_number(self):

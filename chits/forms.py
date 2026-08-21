@@ -2,7 +2,7 @@ from django import forms
 
 from committees.models import CountryAssignment
 
-from .models import MAX_MESSAGE_LENGTH, Category, Priority, RecipientType
+from .models import MAX_MESSAGE_LENGTH, Category, RecipientType
 
 
 class SendChitForm(forms.Form):
@@ -27,6 +27,15 @@ class SendChitForm(forms.Form):
         empty_label="Select a country…",
         widget=forms.Select(attrs={"class": "form-select"}),
     )
+    is_via_eb = forms.BooleanField(
+        required=False,
+        label="Also send a copy to the Executive Board (Via EB)",
+        help_text=(
+            "The committee's Executive Board will be able to read this chit "
+            "and its replies, and may reply themselves."
+        ),
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
     subject = forms.CharField(
         max_length=200,
         required=False,
@@ -44,11 +53,6 @@ class SendChitForm(forms.Form):
     )
     category = forms.ChoiceField(
         choices=Category.choices, widget=forms.Select(attrs={"class": "form-select"})
-    )
-    priority = forms.ChoiceField(
-        choices=Priority.choices,
-        initial=Priority.NORMAL,
-        widget=forms.Select(attrs={"class": "form-select"}),
     )
     is_anonymous = forms.BooleanField(
         required=False, widget=forms.CheckboxInput(attrs={"class": "form-check-input"})
@@ -126,6 +130,9 @@ class SendChitForm(forms.Form):
                     "for this conference."
                 )
             cleaned_data["recipient_country"] = None
+            # "Via EB" is meaningless when the chit is already addressed
+            # directly to the EB — never trust a stray checked box here.
+            cleaned_data["is_via_eb"] = False
 
         message = cleaned_data.get("message", "")
         if len(message) > self.effective_max_length:

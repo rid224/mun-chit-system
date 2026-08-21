@@ -14,7 +14,7 @@ from committees.models import Committee, CountryAssignment
 from committees.selectors import get_committee_context
 
 from .forms import ReplyForm, SendChitForm
-from .models import Category, Chit, ChitReply, Priority, RecipientType, Status
+from .models import Category, Chit, ChitReply, RecipientType, Status
 
 
 class ActiveCommitteeMixin:
@@ -75,15 +75,12 @@ class ChitListFilterMixin:
         request = self.request
         status = request.GET.get("status")
         category = request.GET.get("category")
-        priority = request.GET.get("priority")
         q = request.GET.get("q")
 
         if status:
             qs = qs.filter(status=status)
         if category:
             qs = qs.filter(category=category)
-        if priority:
-            qs = qs.filter(priority=priority)
         if q:
             qs = qs.filter(Q(subject__icontains=q) | Q(chit_number__icontains=q))
         return qs
@@ -93,11 +90,9 @@ class ChitListFilterMixin:
         context["committee"] = self.active_committee
         context["status_choices"] = Status.choices
         context["category_choices"] = Category.choices
-        context["priority_choices"] = Priority.choices
         context["current_filters"] = {
             "status": self.request.GET.get("status", ""),
             "category": self.request.GET.get("category", ""),
-            "priority": self.request.GET.get("priority", ""),
             "q": self.request.GET.get("q", ""),
         }
         return context
@@ -115,7 +110,6 @@ class EBDashboardView(ExecutiveBoardRequiredMixin, ActiveCommitteeMixin, Templat
         ).exclude(status=Status.ARCHIVED)
         context["new_count"] = visible.filter(status=Status.SUBMITTED).count()
         context["unread_count"] = visible.unread().count()
-        context["urgent_count"] = visible.urgent().count()
         context["awaiting_response_count"] = visible.awaiting_response().count()
         return context
 
@@ -124,10 +118,13 @@ class EBIncomingChitsView(
     ExecutiveBoardRequiredMixin, ActiveCommitteeMixin, ChitListFilterMixin, ListView
 ):
     """
-    Combines the New / Unread / Urgent / Awaiting-response queues required
-    by the spec into one filterable inbox (?queue=new|unread|urgent|awaiting),
-    plus the same search/status/category/priority filters as delegate
-    history views. Archived chits are excluded here — see EBArchiveView.
+    Combines the New / Unread / Awaiting-response queues required by the
+    spec into one filterable inbox (?queue=new|unread|awaiting), plus the
+    same search/status/category filters as delegate history views.
+    Archived chits are excluded here — see EBArchiveView. Also includes
+    delegate-to-delegate chits explicitly CC'd "Via EB" (see
+    Chit.is_via_eb) — those come through automatically via
+    Chit.objects.visible_to(), so no separate handling is needed here.
     """
 
     required_role = "executive_board"
@@ -142,14 +139,12 @@ class EBIncomingChitsView(
         )
 
     def get_queryset(self):
-        qs = self.base_queryset().order_by("-priority", "-created_at")
+        qs = self.base_queryset().order_by("-created_at")
         queue = self.request.GET.get("queue", "all")
         if queue == "new":
             qs = qs.filter(status=Status.SUBMITTED)
         elif queue == "unread":
             qs = qs.unread()
-        elif queue == "urgent":
-            qs = qs.urgent()
         elif queue == "awaiting":
             qs = qs.awaiting_response()
         return self.apply_filters(qs)
@@ -162,7 +157,6 @@ class EBIncomingChitsView(
             "all": base.count(),
             "new": base.filter(status=Status.SUBMITTED).count(),
             "unread": base.unread().count(),
-            "urgent": base.urgent().count(),
             "awaiting": base.awaiting_response().count(),
         }
         context["queue"] = queue
@@ -171,7 +165,6 @@ class EBIncomingChitsView(
             ("all", "All", counts["all"]),
             ("new", "New", counts["new"]),
             ("unread", "Unread", counts["unread"]),
-            ("urgent", "Urgent", counts["urgent"]),
             ("awaiting", "Awaiting response", counts["awaiting"]),
         ]
         return context
@@ -230,10 +223,10 @@ class SendChitView(DelegateRequiredMixin, ActiveCommitteeMixin, View):
             init = {
                 "recipient_type": initial.get("recipient_type"),
                 "recipient_country": initial.get("recipient_country_id"),
+                "is_via_eb": initial.get("is_via_eb"),
                 "subject": initial.get("subject"),
                 "message": initial.get("message"),
                 "category": initial.get("category"),
-                "priority": initial.get("priority"),
                 "is_anonymous": initial.get("is_anonymous"),
             }
         return SendChitForm(initial=init, **form_kwargs)
@@ -244,10 +237,10 @@ class SendChitView(DelegateRequiredMixin, ActiveCommitteeMixin, View):
         return {
             "recipient_type": cleaned["recipient_type"],
             "recipient_country_id": str(recipient_country.id) if recipient_country else None,
+            "is_via_eb": cleaned.get("is_via_eb", False),
             "subject": cleaned.get("subject", ""),
             "message": cleaned["message"],
             "category": cleaned["category"],
-            "priority": cleaned["priority"],
             "is_anonymous": cleaned.get("is_anonymous", False),
         }
 
@@ -316,10 +309,10 @@ class PreviewChitView(DelegateRequiredMixin, ActiveCommitteeMixin, View):
             sender_country=sender_assignment,
             recipient_country=cleaned.get("recipient_country"),
             recipient_type=cleaned["recipient_type"],
+            is_via_eb=cleaned.get("is_via_eb", False),
             subject=cleaned.get("subject", ""),
             message=cleaned["message"],
             category=cleaned["category"],
-            priority=cleaned["priority"],
             is_anonymous=cleaned.get("is_anonymous", False),
             status=Status.SUBMITTED,
             submitted_at=timezone.now(),
@@ -338,10 +331,10 @@ class PreviewChitView(DelegateRequiredMixin, ActiveCommitteeMixin, View):
             {
                 "recipient_type": draft["recipient_type"],
                 "recipient_country": draft.get("recipient_country_id") or "",
+                "is_via_eb": "on" if draft.get("is_via_eb") else "",
                 "subject": draft.get("subject", ""),
                 "message": draft["message"],
                 "category": draft["category"],
-                "priority": draft["priority"],
                 "is_anonymous": "on" if draft.get("is_anonymous") else "",
                 "agree_to_rules": "on",  # confirmed at the compose step already
             }
@@ -370,7 +363,6 @@ class PreviewChitView(DelegateRequiredMixin, ActiveCommitteeMixin, View):
             "draft": draft,
             "recipient_country": recipient_country,
             "category_display": dict(Category.choices).get(draft["category"], draft["category"]),
-            "priority_display": dict(Priority.choices).get(draft["priority"], draft["priority"]),
         }
 
 
@@ -456,9 +448,14 @@ class ChitDetailView(LoginRequiredMixin, DetailView):
 
     def _is_eb_actor(self, chit):
         """True only if the current user is an active EB member of THIS
-        chit's committee AND the chit is actually addressed to the EB —
+        chit's committee AND the chit is either addressed directly to the
+        EB, or is a delegate-to-delegate chit explicitly CC'd "Via EB" —
         checked server-side on every POST, never inferred from the UI."""
-        if chit.recipient_type != RecipientType.EXECUTIVE_BOARD:
+        is_eb_addressed = chit.recipient_type == RecipientType.EXECUTIVE_BOARD
+        is_via_eb_delegate_chit = (
+            chit.recipient_type == RecipientType.DELEGATE and chit.is_via_eb
+        )
+        if not (is_eb_addressed or is_via_eb_delegate_chit):
             return False
         context = get_committee_context(self.request.user, chit.committee)
         return context is not None and context["role"] == "executive_board"

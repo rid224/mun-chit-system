@@ -21,15 +21,6 @@
             {% endfor %}
         </select>
     </div>
-    <div class="col-6 col-md-2">
-        <label class="form-label small text-muted">Priority</label>
-        <select name="priority" class="form-select">
-            <option value="">All</option>
-            {% for value, label in priority_choices %}
-            <option value="{{ value }}" {% if current_filters.priority == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
     <div class="col-6 col-md-1">
         <button type="submit" class="btn btn-mcs-primary w-100 mcs-focus">Filter</button>
     </div>

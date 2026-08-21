@@ -49,6 +49,12 @@
                 {% for error in form.recipient_country.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
             </div>
 
+            <div class="form-check mb-3" id="via-eb-field">
+                {{ form.is_via_eb }}
+                <label class="form-check-label" for="{{ form.is_via_eb.id_for_label }}">{{ form.is_via_eb.label }}</label>
+                <div class="form-text">{{ form.is_via_eb.help_text }}</div>
+            </div>
+
             <div class="mb-3">
                 <label for="{{ form.subject.id_for_label }}" class="form-label">Subject <span class="text-muted small">(optional)</span></label>
                 {{ form.subject }}
@@ -63,15 +69,9 @@
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-6 mb-3">
-                    <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
-                    {{ form.category }}
-                </div>
-                <div class="col-6 mb-3">
-                    <label for="{{ form.priority.id_for_label }}" class="form-label">Priority</label>
-                    {{ form.priority }}
-                </div>
+            <div class="mb-3">
+                <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
+                {{ form.category }}
             </div>
 
             {% if form.is_anonymous %}
@@ -108,13 +108,17 @@
         updateCount();
     }
 
-    // Only show the country dropdown when "delegate" recipient type is selected.
+    // Only show the country field and "Via EB" option when "delegate"
+    // recipient type is selected — Via EB is meaningless once a chit is
+    // already addressed directly to the Executive Board.
     const countryField = document.getElementById('recipient-country-field');
+    const viaEbField = document.getElementById('via-eb-field');
     const radios = document.querySelectorAll('input[name="recipient_type"]');
     function updateRecipientVisibility() {
         const selected = document.querySelector('input[name="recipient_type"]:checked');
-        if (!countryField) return;
-        countryField.style.display = (selected && selected.value === 'delegate') ? '' : 'none';
+        const isDelegate = selected && selected.value === 'delegate';
+        if (countryField) countryField.style.display = isDelegate ? '' : 'none';
+        if (viaEbField) viaEbField.style.display = isDelegate ? '' : 'none';
     }
     radios.forEach(function (r) { r.addEventListener('change', updateRecipientVisibility); });
     updateRecipientVisibility();

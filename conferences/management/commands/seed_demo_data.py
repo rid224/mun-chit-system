@@ -1,7 +1,7 @@
 """
 Creates a fully working demo: one conference, three committees, three
 rooms, delegate/EB/admin accounts, and sample chits covering every status,
-category, and priority so the app is immediately explorable without
+category, and Via EB routing so the app is immediately explorable without
 manually clicking through every flow first.
 
 Safety: refuses to run unless settings.DEBUG is True, since it creates
@@ -17,7 +17,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from chits.models import Category, Chit, ChitReply, Priority, RecipientType, Status
+from chits.models import Category, Chit, ChitReply, RecipientType, Status
 from committees.models import Committee, CommitteeStaff, CountryAssignment
 from conferences.models import Conference, Room
 
@@ -233,15 +233,15 @@ class Command(BaseCommand):
         self._make_chit(
             conference, unsc, unsc_d["USA"], recipient_country=unsc_d["GBR"],
             subject="Joint statement on sanctions", message="Would the UK co-sponsor our draft resolution?",
-            category=Category.MOTION_RELATED, priority=Priority.NORMAL, status=Status.SUBMITTED,
+            category=Category.MOTION_RELATED, status=Status.SUBMITTED,
             created_at=now - timedelta(minutes=20),
         )
 
-        # 2. Urgent delegate-to-delegate, already read.
+        # 2. Delegate-to-delegate chit CC'd "Via EB", already read.
         self._make_chit(
             conference, unsc, unsc_d["FRA"], recipient_country=unsc_d["CHN"],
             subject="Point of clarification", message="Can you clarify your delegation's position on paragraph 4?",
-            category=Category.POINT_OF_INFORMATION, priority=Priority.URGENT, status=Status.READ,
+            category=Category.POINT_OF_INFORMATION, is_via_eb=True, status=Status.READ,
             created_at=now - timedelta(hours=1), delivered_at=now - timedelta(minutes=55),
             read_at=now - timedelta(minutes=50),
         )
@@ -250,7 +250,7 @@ class Command(BaseCommand):
         self._make_chit(
             conference, unsc, unsc_d["RUS"], recipient_country=unsc_d["IND"],
             subject="", message="Off the record — are you open to an amendment on clause 7?",
-            category=Category.OTHER, priority=Priority.NORMAL, status=Status.DELIVERED,
+            category=Category.OTHER, status=Status.DELIVERED,
             is_anonymous=True, created_at=now - timedelta(minutes=40),
             delivered_at=now - timedelta(minutes=38),
         )
@@ -259,7 +259,7 @@ class Command(BaseCommand):
         self._make_chit(
             conference, ecosoc, ecosoc_d["DEU"], recipient_type=RecipientType.EXECUTIVE_BOARD,
             subject="Request to extend caucus", message="Requesting a 10-minute extension to the current moderated caucus.",
-            category=Category.PROCEDURAL_QUESTION, priority=Priority.URGENT, status=Status.SUBMITTED,
+            category=Category.PROCEDURAL_QUESTION, status=Status.SUBMITTED,
             created_at=now - timedelta(minutes=5),
         )
 
@@ -267,7 +267,7 @@ class Command(BaseCommand):
         eb_chit = self._make_chit(
             conference, ecosoc, ecosoc_d["JPN"], recipient_type=RecipientType.EXECUTIVE_BOARD,
             subject="Speaker's list question", message="Has the speaker's list for the next session been finalized?",
-            category=Category.PROCEDURAL_QUESTION, priority=Priority.NORMAL, status=Status.REPLIED,
+            category=Category.PROCEDURAL_QUESTION, status=Status.REPLIED,
             created_at=now - timedelta(hours=2), delivered_at=now - timedelta(hours=1, minutes=55),
             read_at=now - timedelta(hours=1, minutes=50), replied_at=now - timedelta(hours=1, minutes=45),
         )
@@ -282,7 +282,7 @@ class Command(BaseCommand):
         self._make_chit(
             conference, unhrc, unhrc_d["ZAF"], recipient_type=RecipientType.EXECUTIVE_BOARD,
             subject="Resolved procedural matter", message="This has already been resolved in session — closing this out.",
-            category=Category.PROCEDURAL_QUESTION, priority=Priority.NORMAL, status=Status.ARCHIVED,
+            category=Category.PROCEDURAL_QUESTION, status=Status.ARCHIVED,
             created_at=now - timedelta(hours=5), delivered_at=now - timedelta(hours=4, minutes=55),
             read_at=now - timedelta(hours=4, minutes=50), archived_at=now - timedelta(hours=4),
         )
@@ -291,7 +291,7 @@ class Command(BaseCommand):
         self._make_chit(
             conference, unhrc, unhrc_d["MEX"], recipient_country=unhrc_d["SWE"],
             subject="Bloc coordination", message="Are you free to meet during the next unmoderated caucus?",
-            category=Category.MOTION_RELATED, priority=Priority.NORMAL, status=Status.SUBMITTED,
+            category=Category.MOTION_RELATED, status=Status.SUBMITTED,
             created_at=now - timedelta(minutes=8),
         )
 

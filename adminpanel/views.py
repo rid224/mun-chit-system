@@ -17,7 +17,7 @@ from accounts.permissions import (
     require_conference_management,
 )
 from audit.models import AuditLog
-from chits.models import Category, Chit, Priority, Status
+from chits.models import Category, Chit, Status
 from committees.models import Committee, CommitteeStaff, CountryAssignment
 from conferences.models import Conference, Room
 
@@ -479,7 +479,7 @@ def _apply_admin_chit_filters(qs, get_params):
     committee_id = get_params.get("committee")
     status = get_params.get("status")
     category = get_params.get("category")
-    priority = get_params.get("priority")
+    via_eb = get_params.get("via_eb")
     q = get_params.get("q")
 
     if conference_id:
@@ -490,8 +490,8 @@ def _apply_admin_chit_filters(qs, get_params):
         qs = qs.filter(status=status)
     if category:
         qs = qs.filter(category=category)
-    if priority:
-        qs = qs.filter(priority=priority)
+    if via_eb:
+        qs = qs.filter(is_via_eb=True)
     if q:
         qs = qs.filter(Q(subject__icontains=q) | Q(chit_number__icontains=q))
     return qs
@@ -528,13 +528,12 @@ class AdminChitListView(CommitteeAdminRequiredMixin, ListView):
         context["committees"] = managed_committees_for(user)
         context["status_choices"] = Status.choices
         context["category_choices"] = Category.choices
-        context["priority_choices"] = Priority.choices
         context["current_filters"] = {
             "conference": self.request.GET.get("conference", ""),
             "committee": self.request.GET.get("committee", ""),
             "status": self.request.GET.get("status", ""),
             "category": self.request.GET.get("category", ""),
-            "priority": self.request.GET.get("priority", ""),
+            "via_eb": self.request.GET.get("via_eb", ""),
             "q": self.request.GET.get("q", ""),
         }
         return context
@@ -563,7 +562,7 @@ class AdminChitExportView(CommitteeAdminRequiredMixin, View):
         writer.writerow(
             [
                 "chit_number", "conference", "committee", "sender_country", "recipient_type",
-                "recipient", "category", "priority", "status", "subject", "message",
+                "recipient", "via_eb", "category", "status", "subject", "message",
                 "is_anonymous", "created_at", "submitted_at",
             ]
         )
@@ -581,8 +580,8 @@ class AdminChitExportView(CommitteeAdminRequiredMixin, View):
                     chit.sender_country.country_name if chit.sender_country else "",
                     chit.get_recipient_type_display(),
                     recipient,
+                    chit.is_via_eb,
                     chit.get_category_display(),
-                    chit.get_priority_display(),
                     chit.get_status_display(),
                     chit.subject,
                     chit.message,

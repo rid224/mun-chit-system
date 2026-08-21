@@ -60,7 +60,7 @@
         <thead>
             <tr>
                 <th scope="col">Chit #</th><th scope="col">Conference</th><th scope="col">Committee</th><th scope="col">From</th><th scope="col">To</th>
-                <th scope="col">Status</th><th scope="col">Priority</th><th scope="col">Sent</th>
+                <th scope="col">Status</th><th scope="col">Sent</th>
             </tr>
         </thead>
         <tbody>
@@ -70,9 +70,8 @@
                 <td>{{ chit.conference.name }}</td>
                 <td>{{ chit.committee.name }}</td>
                 <td>{% if chit.is_anonymous %}Anonymous{% else %}{{ chit.sender_country.country_name|default:chit.sender.name }}{% endif %}</td>
-                <td>{% if chit.recipient_type == "executive_board" %}Executive Board{% else %}{{ chit.recipient_country.country_name|default:"—" }}{% endif %}</td>
+                <td>{% if chit.recipient_type == "executive_board" %}Executive Board{% else %}{{ chit.recipient_country.country_name|default:"—" }}{% if chit.is_via_eb %} <span class="badge text-bg-info">Via EB</span>{% endif %}{% endif %}</td>
                 <td>{% include "chits/_status_badge.html" %}</td>
-                <td>{% if chit.priority == "urgent" %}<span class="text-danger fw-semibold">Urgent</span>{% else %}Normal{% endif %}</td>
                 <td class="text-muted small">{{ chit.created_at|date:"M j, g:i A" }}</td>
             </tr>
             {% endfor %}

@@ -21,12 +21,16 @@ class ChitQuerySet(models.QuerySet):
         if user.is_executive_board:
             from committees.selectors import get_active_staff_assignments
 
-            eb_committee_ids = get_active_staff_assignments(user).values_list(
-                "committee_id", flat=True
+            eb_committee_ids = list(
+                get_active_staff_assignments(user).values_list("committee_id", flat=True)
             )
             return self.filter(
-                committee_id__in=list(eb_committee_ids),
-                recipient_type="executive_board",
+                Q(committee_id__in=eb_committee_ids, recipient_type="executive_board")
+                | Q(
+                    committee_id__in=eb_committee_ids,
+                    recipient_type="delegate",
+                    is_via_eb=True,
+                )
             )
 
         # Delegate (default): chits they sent, chits sent to their assigned
@@ -45,9 +49,6 @@ class ChitQuerySet(models.QuerySet):
 
     def unread(self):
         return self.filter(read_at__isnull=True)
-
-    def urgent(self):
-        return self.filter(priority="urgent")
 
     def awaiting_response(self):
         return self.filter(status__in=["delivered", "read"])

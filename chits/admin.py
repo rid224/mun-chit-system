@@ -13,9 +13,9 @@ class ChitReplyInline(admin.TabularInline):
 class ChitAdmin(admin.ModelAdmin):
     list_display = [
         "chit_number", "conference", "committee", "room", "sender",
-        "recipient_type", "status", "priority", "created_at",
+        "recipient_type", "status", "created_at",
     ]
-    list_filter = ["conference", "committee", "status", "priority", "recipient_type", "category"]
+    list_filter = ["conference", "committee", "status", "recipient_type", "category", "is_via_eb"]
     search_fields = ["chit_number", "subject", "sender__email", "sender__name"]
     readonly_fields = ["public_id", "chit_number", "created_at"]
     inlines = [ChitReplyInline]

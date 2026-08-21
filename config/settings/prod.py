@@ -1,4 +1,4 @@
-﻿from .base import *  # noqa
+from .base import *  # noqa
 
 DEBUG = False
 
@@ -17,7 +17,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Railway (and most PaaS proxies) terminate HTTPS in front of the app, so
 # Django needs to be told explicitly which HTTPS origins are allowed to
-# submit forms here -- without this, POST requests (like login) fail CSRF
+# submit forms here — without this, POST requests (like login) fail CSRF
 # validation even though the site itself loads fine over GET.
 CSRF_TRUSTED_ORIGINS = [
     f"https://{host}" for host in env.list("DJANGO_ALLOWED_HOSTS", default=[]) if host

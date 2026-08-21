@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import User
-from chits.models import Category, Chit, Priority, RecipientType, Status
+from chits.models import Category, Chit, RecipientType, Status
 from committees.models import Committee, CountryAssignment
 from conferences.models import Conference, Room
 
@@ -52,7 +52,6 @@ class ChitSubmissionTestBase(TestCase):
             "subject": "Test subject",
             "message": "Hello there, this is a test chit.",
             "category": Category.POINT_OF_INFORMATION,
-            "priority": Priority.NORMAL,
             "agree_to_rules": "on",
         }
         payload.update(overrides)

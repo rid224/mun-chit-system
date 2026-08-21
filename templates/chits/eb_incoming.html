@@ -41,8 +41,7 @@
                 <th scope="col">From</th>
                 <th scope="col">Subject</th>
                 <th scope="col">Category</th>
-                <th scope="col">Priority</th>
-                <th scope="col">Status</th>
+                                <th scope="col">Status</th>
                 <th scope="col">Received</th>
             </tr>
         </thead>
@@ -50,10 +49,9 @@
             {% for chit in chits %}
             <tr>
                 <td><a href="{% url 'chits:detail' chit.public_id %}">{{ chit.chit_number }}</a></td>
-                <td>{% if chit.is_anonymous %}Anonymous{% else %}{{ chit.sender_country.country_name|default:chit.sender.name }}{% endif %}</td>
+                <td>{% if chit.is_anonymous %}Anonymous{% else %}{{ chit.sender_country.country_name|default:chit.sender.name }}{% endif %}{% if chit.is_via_eb %} <span class="badge text-bg-info">Via EB</span>{% endif %}</td>
                 <td>{{ chit.subject|default:"—"|truncatechars:40 }}</td>
                 <td>{{ chit.get_category_display }}</td>
-                <td>{% if chit.priority == "urgent" %}<span class="text-danger fw-semibold">Urgent</span>{% else %}Normal{% endif %}</td>
                 <td>{% include "chits/_status_badge.html" %}</td>
                 <td class="text-muted small">{{ chit.created_at|date:"M j, g:i A" }}</td>
             </tr>

@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from accounts.models import User
-from chits.models import Category, Chit, ChitReply, Priority, RecipientType, Status
+from chits.models import Category, Chit, ChitReply, RecipientType, Status
 from committees.models import Committee, CommitteeStaff, CountryAssignment
 from conferences.models import Conference, Room
 
@@ -73,7 +73,6 @@ class EBWorkflowTestBase(TestCase):
             recipient_type=RecipientType.EXECUTIVE_BOARD,
             message="Point of order",
             category=Category.PROCEDURAL_QUESTION,
-            priority=Priority.NORMAL,
             status=Status.SUBMITTED,
         )
         defaults.update(overrides)
@@ -125,15 +124,6 @@ class EBIncomingQueueTests(EBWorkflowTestBase):
         self.assertIn(new_chit, chits)
         self.assertNotIn(read_chit, chits)
 
-    def test_urgent_queue_filters_to_urgent_only(self):
-        urgent_chit = self._make_eb_chit(priority=Priority.URGENT)
-        normal_chit = self._make_eb_chit(priority=Priority.NORMAL)
-        self._login_and_activate(self.eb_member)
-        response = self.client.get(reverse("chits:eb_incoming"), {"queue": "urgent"})
-        chits = list(response.context["chits"])
-        self.assertIn(urgent_chit, chits)
-        self.assertNotIn(normal_chit, chits)
-
     def test_awaiting_queue_filters_to_delivered_and_read(self):
         awaiting = self._make_eb_chit(status=Status.DELIVERED)
         submitted = self._make_eb_chit(status=Status.SUBMITTED)
@@ -152,11 +142,10 @@ class EBIncomingQueueTests(EBWorkflowTestBase):
     def test_queue_counts_reflect_committee_scope(self):
         self._make_eb_chit(status=Status.SUBMITTED)
         self._make_eb_chit(status=Status.SUBMITTED)
-        self._make_eb_chit(priority=Priority.URGENT)
+        self._make_eb_chit(status=Status.SUBMITTED)
         self._login_and_activate(self.eb_member)
         response = self.client.get(reverse("chits:eb_incoming"))
         self.assertEqual(response.context["queue_counts"]["new"], 3)
-        self.assertEqual(response.context["queue_counts"]["urgent"], 1)
 
     def test_search_by_subject(self):
         self._make_eb_chit(subject="Budget question")
@@ -307,8 +296,158 @@ class EBDashboardCountTests(EBWorkflowTestBase):
         self._make_eb_chit(status=Status.SUBMITTED)
         self._make_eb_chit(status=Status.SUBMITTED)
         self._make_eb_chit(status=Status.ARCHIVED)
-        self._make_eb_chit(priority=Priority.URGENT)
+        self._make_eb_chit(status=Status.SUBMITTED)
         self._login_and_activate(self.eb_member)
         response = self.client.get(reverse("chits:eb_dashboard"))
         self.assertEqual(response.context["new_count"], 3)
-        self.assertEqual(response.context["urgent_count"], 1)
+
+
+class ViaEBTests(EBWorkflowTestBase):
+    """
+    A delegate-to-delegate chit marked is_via_eb=True should become
+    visible to (and repliable by) the EB of the SENDER's committee, in
+    addition to the sender and the actual recipient delegate — without
+    changing visibility for an ordinary (non-via-EB) delegate chit, or
+    for EB members of a different committee.
+    """
+
+    def test_ordinary_delegate_chit_not_visible_to_eb(self):
+        chit = self._make_delegate_chit(is_via_eb=False)
+        self._login_and_activate(self.eb_member)
+        response = self.client.get(reverse("chits:detail", args=[chit.public_id]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_via_eb_chit_visible_to_committee_eb(self):
+        chit = self._make_delegate_chit(is_via_eb=True)
+        self._login_and_activate(self.eb_member)
+        response = self.client.get(reverse("chits:detail", args=[chit.public_id]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_via_eb_chit_visible_to_recipient_delegate(self):
+        chit = self._make_delegate_chit(is_via_eb=True)
+        self._login_and_activate(self.other_delegate)  # the recipient
+        response = self.client.get(reverse("chits:detail", args=[chit.public_id]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_via_eb_chit_not_visible_to_eb_of_different_committee(self):
+        chit = self._make_delegate_chit(is_via_eb=True)
+        self._login_and_activate(self.other_eb_member)
+        response = self.client.get(reverse("chits:detail", args=[chit.public_id]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_via_eb_chit_appears_in_eb_incoming_inbox(self):
+        chit = self._make_delegate_chit(is_via_eb=True)
+        self._login_and_activate(self.eb_member)
+        response = self.client.get(reverse("chits:eb_incoming"))
+        self.assertIn(chit, list(response.context["chits"]))
+
+    def test_eb_can_reply_to_via_eb_chit(self):
+        chit = self._make_delegate_chit(is_via_eb=True)
+        self._login_and_activate(self.eb_member)
+        response = self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "EB acknowledging this exchange."},
+        )
+        self.assertRedirects(response, reverse("chits:detail", args=[chit.public_id]))
+        chit.refresh_from_db()
+        self.assertEqual(chit.status, Status.REPLIED)
+        self.assertTrue(
+            ChitReply.objects.filter(chit=chit, author=self.eb_member).exists()
+        )
+
+    def test_eb_cannot_reply_to_ordinary_delegate_chit(self):
+        chit = self._make_delegate_chit(is_via_eb=False)
+        self._login_and_activate(self.eb_member)
+        response = self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "Should not be allowed."},
+        )
+        self.assertEqual(response.status_code, 404)  # can't even fetch it to act on it
+
+    def test_eb_reply_visible_to_sender_and_recipient(self):
+        chit = self._make_delegate_chit(is_via_eb=True)
+        self._login_and_activate(self.eb_member)
+        self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "Visible to everyone on this thread."},
+        )
+        for viewer in (self.sender, self.other_delegate):
+            self._login_and_activate(viewer)
+            response = self.client.get(reverse("chits:detail", args=[chit.public_id]))
+            self.assertContains(response, "Visible to everyone on this thread.")
+
+    def test_eb_can_archive_via_eb_chit(self):
+        chit = self._make_delegate_chit(is_via_eb=True)
+        self._login_and_activate(self.eb_member)
+        response = self.client.post(
+            reverse("chits:detail", args=[chit.public_id]), {"action": "archive"}
+        )
+        chit.refresh_from_db()
+        self.assertEqual(chit.status, Status.ARCHIVED)
+
+    def test_via_eb_viewing_by_eb_does_not_mark_read_for_recipient(self):
+        """
+        The EB is a CC'd observer on a via-EB chit, not the actual
+        addressee — their viewing it shouldn't fire the delegate
+        recipient's read receipt.
+        """
+        chit = self._make_delegate_chit(is_via_eb=True, status=Status.SUBMITTED)
+        self._login_and_activate(self.eb_member)
+        self.client.get(reverse("chits:detail", args=[chit.public_id]))
+        chit.refresh_from_db()
+        self.assertEqual(chit.status, Status.SUBMITTED)
+
+    def test_model_rejects_via_eb_on_eb_addressed_chit(self):
+        chit = Chit(
+            conference=self.conference,
+            committee=self.committee,
+            room=self.room,
+            sender=self.sender,
+            sender_country=self.sender_assignment,
+            recipient_type=RecipientType.EXECUTIVE_BOARD,
+            is_via_eb=True,
+            message="Invalid combination.",
+        )
+        with self.assertRaises(Exception):
+            chit.full_clean()
+
+    def test_via_eb_compose_form_end_to_end(self):
+        self._login_and_activate(self.sender)
+        self.client.post(
+            reverse("chits:send"),
+            {
+                "recipient_type": RecipientType.DELEGATE,
+                "recipient_country": str(self.other_assignment.id),
+                "is_via_eb": "on",
+                "subject": "Compose flow test",
+                "message": "Sent with Via EB checked.",
+                "category": Category.OTHER,
+                "agree_to_rules": "on",
+            },
+        )
+        self.client.post(reverse("chits:preview"))
+        chit = Chit.objects.get(subject="Compose flow test")
+        self.assertTrue(chit.is_via_eb)
+
+        # Confirm the EB genuinely gained visibility through the real
+        # compose -> preview -> confirm flow, not just direct ORM creation.
+        self._login_and_activate(self.eb_member)
+        response = self.client.get(reverse("chits:detail", args=[chit.public_id]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_via_eb_forced_false_when_sending_to_eb_directly(self):
+        self._login_and_activate(self.sender)
+        self.client.post(
+            reverse("chits:send"),
+            {
+                "recipient_type": RecipientType.EXECUTIVE_BOARD,
+                "is_via_eb": "on",  # should be ignored/forced off server-side
+                "subject": "EB direct test",
+                "message": "Sent directly to EB with Via EB also checked.",
+                "category": Category.OTHER,
+                "agree_to_rules": "on",
+            },
+        )
+        self.client.post(reverse("chits:preview"))
+        chit = Chit.objects.get(subject="EB direct test")
+        self.assertFalse(chit.is_via_eb)
