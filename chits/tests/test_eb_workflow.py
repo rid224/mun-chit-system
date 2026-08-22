@@ -186,35 +186,31 @@ class EBViewingMarksReadTests(EBWorkflowTestBase):
 
 
 class EBReplyTests(EBWorkflowTestBase):
-    def test_eb_can_reply_to_eb_addressed_chit(self):
+    """
+    Reply permission has moved from the Executive Board to the delegate
+    parties of a chit (see DelegateReplyTests below). EB members can no
+    longer reply to anything — not even chits addressed directly to them
+    — since there's no other party to grant reply to on those, and
+    keeping a narrow EB-only exception would contradict "reply now
+    belongs to delegates."
+    """
+
+    def test_eb_cannot_reply_to_eb_addressed_chit(self):
         chit = self._make_eb_chit()
         self._login_and_activate(self.eb_member)
         response = self.client.post(
             reverse("chits:detail", args=[chit.public_id]),
             {"action": "reply", "message": "Noted, please raise this during the next session."},
         )
-        self.assertRedirects(response, reverse("chits:detail", args=[chit.public_id]))
-        self.assertEqual(ChitReply.objects.filter(chit=chit).count(), 1)
-        chit.refresh_from_db()
-        self.assertEqual(chit.status, Status.REPLIED)
-        self.assertIsNotNone(chit.replied_at)
-
-    def test_reply_records_correct_author(self):
-        chit = self._make_eb_chit()
-        self._login_and_activate(self.eb_member)
-        self.client.post(
-            reverse("chits:detail", args=[chit.public_id]),
-            {"action": "reply", "message": "Reply text here."},
-        )
-        reply = ChitReply.objects.get(chit=chit)
-        self.assertEqual(reply.author, self.eb_member)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(ChitReply.objects.filter(chit=chit).count(), 0)
 
     def test_delegate_cannot_reply_to_eb_addressed_chit(self):
         chit = self._make_eb_chit()
         self._login_and_activate(self.sender)  # sender is the chit's own sender
         response = self.client.post(
             reverse("chits:detail", args=[chit.public_id]),
-            {"action": "reply", "message": "I should not be able to do this."},
+            {"action": "reply", "message": "There's no recipient delegate to reply as here."},
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(ChitReply.objects.filter(chit=chit).count(), 0)
@@ -229,11 +225,88 @@ class EBReplyTests(EBWorkflowTestBase):
         )
         self.assertEqual(response.status_code, 404)
 
+
+class DelegateReplyTests(EBWorkflowTestBase):
+    """
+    Reply capability on a delegate-to-delegate chit belongs to the two
+    delegates actually party to it — the sender and the addressed
+    recipient country's delegate — regardless of whether it's marked
+    Via EB. An unrelated delegate, and the EB, cannot reply.
+    """
+
+    def test_sender_can_reply(self):
+        chit = self._make_delegate_chit()
+        self._login_and_activate(self.sender)
+        response = self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "Following up on my earlier chit."},
+        )
+        self.assertRedirects(response, reverse("chits:detail", args=[chit.public_id]))
+        self.assertEqual(ChitReply.objects.filter(chit=chit).count(), 1)
+        chit.refresh_from_db()
+        self.assertEqual(chit.status, Status.REPLIED)
+        self.assertIsNotNone(chit.replied_at)
+
+    def test_recipient_delegate_can_reply(self):
+        chit = self._make_delegate_chit()
+        self._login_and_activate(self.other_delegate)  # the recipient
+        response = self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "Responding to your chit."},
+        )
+        self.assertRedirects(response, reverse("chits:detail", args=[chit.public_id]))
+        self.assertEqual(ChitReply.objects.filter(chit=chit).count(), 1)
+
+    def test_reply_records_correct_author(self):
+        chit = self._make_delegate_chit()
+        self._login_and_activate(self.other_delegate)
+        self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "Reply text here."},
+        )
+        reply = ChitReply.objects.get(chit=chit)
+        self.assertEqual(reply.author, self.other_delegate)
+
+    def test_unrelated_delegate_cannot_reply(self):
+        chit = self._make_delegate_chit()
+        third_delegate = User.objects.create_user(
+            email="third@example.com", password=self.password, name="Third Delegate"
+        )
+        CountryAssignment.objects.create(
+            user=third_delegate, committee=self.committee, country_name="Kenya", country_code="KEN"
+        )
+        self._login_and_activate(third_delegate)
+        response = self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "I'm not part of this exchange."},
+        )
+        # visible_to() excludes it for an unrelated delegate entirely.
+        self.assertEqual(response.status_code, 404)
+
+    def test_eb_cannot_reply_to_ordinary_delegate_chit(self):
+        chit = self._make_delegate_chit(is_via_eb=False)
+        self._login_and_activate(self.eb_member)
+        response = self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "Should not be allowed."},
+        )
+        self.assertEqual(response.status_code, 404)  # not even visible to EB without Via EB
+
+    def test_eb_cannot_reply_to_via_eb_chit(self):
+        chit = self._make_delegate_chit(is_via_eb=True)
+        self._login_and_activate(self.eb_member)
+        response = self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "EB should no longer be able to do this."},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(ChitReply.objects.filter(chit=chit).count(), 0)
+
     def test_reply_disabled_by_conference_setting(self):
         self.conference.replies_enabled = False
         self.conference.save()
-        chit = self._make_eb_chit()
-        self._login_and_activate(self.eb_member)
+        chit = self._make_delegate_chit()
+        self._login_and_activate(self.sender)
         response = self.client.post(
             reverse("chits:detail", args=[chit.public_id]),
             {"action": "reply", "message": "Should be blocked."},
@@ -242,8 +315,8 @@ class EBReplyTests(EBWorkflowTestBase):
         self.assertEqual(ChitReply.objects.filter(chit=chit).count(), 0)
 
     def test_cannot_reply_to_archived_chit(self):
-        chit = self._make_eb_chit(status=Status.ARCHIVED)
-        self._login_and_activate(self.eb_member)
+        chit = self._make_delegate_chit(status=Status.ARCHIVED)
+        self._login_and_activate(self.sender)
         response = self.client.post(
             reverse("chits:detail", args=[chit.public_id]),
             {"action": "reply", "message": "Too late."},
@@ -252,12 +325,24 @@ class EBReplyTests(EBWorkflowTestBase):
         self.assertEqual(ChitReply.objects.filter(chit=chit).count(), 0)
 
     def test_empty_reply_rejected(self):
-        chit = self._make_eb_chit()
-        self._login_and_activate(self.eb_member)
+        chit = self._make_delegate_chit()
+        self._login_and_activate(self.sender)
         response = self.client.post(
             reverse("chits:detail", args=[chit.public_id]), {"action": "reply", "message": ""}
         )
         self.assertEqual(ChitReply.objects.filter(chit=chit).count(), 0)
+
+    def test_reply_visible_to_both_delegates_and_eb_if_via_eb(self):
+        chit = self._make_delegate_chit(is_via_eb=True)
+        self._login_and_activate(self.sender)
+        self.client.post(
+            reverse("chits:detail", args=[chit.public_id]),
+            {"action": "reply", "message": "Visible to everyone on this thread."},
+        )
+        for viewer in (self.sender, self.other_delegate, self.eb_member):
+            self._login_and_activate(viewer)
+            response = self.client.get(reverse("chits:detail", args=[chit.public_id]))
+            self.assertContains(response, "Visible to everyone on this thread.")
 
 
 class EBArchiveTests(EBWorkflowTestBase):
@@ -340,41 +425,6 @@ class ViaEBTests(EBWorkflowTestBase):
         self._login_and_activate(self.eb_member)
         response = self.client.get(reverse("chits:eb_incoming"))
         self.assertIn(chit, list(response.context["chits"]))
-
-    def test_eb_can_reply_to_via_eb_chit(self):
-        chit = self._make_delegate_chit(is_via_eb=True)
-        self._login_and_activate(self.eb_member)
-        response = self.client.post(
-            reverse("chits:detail", args=[chit.public_id]),
-            {"action": "reply", "message": "EB acknowledging this exchange."},
-        )
-        self.assertRedirects(response, reverse("chits:detail", args=[chit.public_id]))
-        chit.refresh_from_db()
-        self.assertEqual(chit.status, Status.REPLIED)
-        self.assertTrue(
-            ChitReply.objects.filter(chit=chit, author=self.eb_member).exists()
-        )
-
-    def test_eb_cannot_reply_to_ordinary_delegate_chit(self):
-        chit = self._make_delegate_chit(is_via_eb=False)
-        self._login_and_activate(self.eb_member)
-        response = self.client.post(
-            reverse("chits:detail", args=[chit.public_id]),
-            {"action": "reply", "message": "Should not be allowed."},
-        )
-        self.assertEqual(response.status_code, 404)  # can't even fetch it to act on it
-
-    def test_eb_reply_visible_to_sender_and_recipient(self):
-        chit = self._make_delegate_chit(is_via_eb=True)
-        self._login_and_activate(self.eb_member)
-        self.client.post(
-            reverse("chits:detail", args=[chit.public_id]),
-            {"action": "reply", "message": "Visible to everyone on this thread."},
-        )
-        for viewer in (self.sender, self.other_delegate):
-            self._login_and_activate(viewer)
-            response = self.client.get(reverse("chits:detail", args=[chit.public_id]))
-            self.assertContains(response, "Visible to everyone on this thread.")
 
     def test_eb_can_archive_via_eb_chit(self):
         chit = self._make_delegate_chit(is_via_eb=True)

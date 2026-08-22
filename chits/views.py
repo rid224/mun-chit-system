@@ -436,21 +436,44 @@ class ChitDetailView(LoginRequiredMixin, DetailView):
         self.object = self.get_object()
         chit = self.object
 
-        if not self._is_eb_actor(chit):
-            raise PermissionDenied("Only the Executive Board of this committee can do that.")
-
         action = request.POST.get("action")
         if action == "reply":
+            if not self._is_delegate_party(chit):
+                raise PermissionDenied(
+                    "Only the sender or recipient delegate of this chit can reply to it."
+                )
             return self._handle_reply(request, chit)
         if action == "archive":
+            if not self._is_eb_actor(chit):
+                raise PermissionDenied("Only the Executive Board of this committee can do that.")
             return self._handle_archive(request, chit)
         return redirect("chits:detail", public_id=chit.public_id)
+
+    def _is_delegate_party(self, chit):
+        """
+        True only for the two delegates actually party to this chit — the
+        sender, or the addressed recipient country's delegate. Only
+        meaningful for delegate-to-delegate chits (recipient_type ==
+        DELEGATE); a chit addressed directly to the Executive Board has no
+        "recipient delegate" to grant this to.
+        """
+        if chit.recipient_type != RecipientType.DELEGATE:
+            return False
+        user = self.request.user
+        is_sender = chit.sender_id == user.id
+        is_recipient = bool(
+            chit.recipient_country_id and chit.recipient_country.user_id == user.id
+        )
+        return is_sender or is_recipient
 
     def _is_eb_actor(self, chit):
         """True only if the current user is an active EB member of THIS
         chit's committee AND the chit is either addressed directly to the
         EB, or is a delegate-to-delegate chit explicitly CC'd "Via EB" —
-        checked server-side on every POST, never inferred from the UI."""
+        checked server-side on every POST, never inferred from the UI.
+        Note: EB no longer has reply permission (moved to the delegate
+        parties themselves) — this now only gates the archive action and
+        general visibility/read-receipt logic."""
         is_eb_addressed = chit.recipient_type == RecipientType.EXECUTIVE_BOARD
         is_via_eb_delegate_chit = (
             chit.recipient_type == RecipientType.DELEGATE and chit.is_via_eb
@@ -495,6 +518,7 @@ class ChitDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         chit = context["object"]
         context["is_eb_actor"] = self._is_eb_actor(chit)
+        context["is_delegate_party"] = self._is_delegate_party(chit)
         context["reply_form"] = ReplyForm()
         return context
 
